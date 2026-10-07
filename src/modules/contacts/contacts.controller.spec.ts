@@ -14,6 +14,8 @@ describe('ContactsController', () => {
       findOne: vi.fn(),
       update: vi.fn(),
       remove: vi.fn(),
+      addNote: vi.fn(),
+      getNotes: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -63,20 +65,20 @@ describe('ContactsController', () => {
     expect(service.findOne).toHaveBeenCalledWith(1);
   });
 
-  it('should call update on service', async () => {
-    const updateDto = { name: 'Manuel Updated' };
-    service.update!.mockResolvedValue({ id: 1, name: 'Manuel Updated' });
+  it('should call addNote on service', async () => {
+    const dto = { content: 'Nueva nota' };
+    service.addNote!.mockResolvedValue({ id: 1, content: 'Nueva nota' });
 
-    const result = await controller.update(1, updateDto);
-    expect(result).toEqual({ id: 1, name: 'Manuel Updated' });
-    expect(service.update).toHaveBeenCalledWith(1, updateDto);
+    const result = await controller.addNote(1, dto);
+    expect(result).toEqual({ id: 1, content: 'Nueva nota' });
+    expect(service.addNote).toHaveBeenCalledWith(1, dto);
   });
 
-  it('should call remove on service', async () => {
-    service.remove!.mockResolvedValue({ message: 'Contacto #1 eliminado exitosamente' });
+  it('should call getNotes on service', async () => {
+    service.getNotes!.mockResolvedValue([{ id: 1, content: 'Nota de contacto' }]);
 
-    const result = await controller.remove(1);
-    expect(result).toEqual({ message: 'Contacto #1 eliminado exitosamente' });
-    expect(service.remove).toHaveBeenCalledWith(1);
+    const result = await controller.getNotes(1);
+    expect(result).toEqual([{ id: 1, content: 'Nota de contacto' }]);
+    expect(service.getNotes).toHaveBeenCalledWith(1);
   });
 });

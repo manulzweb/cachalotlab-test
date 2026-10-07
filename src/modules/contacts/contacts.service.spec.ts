@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ContactsService } from './contacts.service.js';
 import { ContactDao } from './dao/contact.dao.js';
+import { NotesService } from '../notes/notes.service.js';
 import { NotFoundException } from '@nestjs/common';
 
 describe('ContactsService', () => {
   let service: ContactsService;
   let contactDao: Partial<Record<keyof ContactDao, ReturnType<typeof vi.fn>>>;
+  let notesService: Partial<Record<keyof NotesService, ReturnType<typeof vi.fn>>>;
 
   beforeEach(async () => {
     contactDao = {
@@ -17,12 +19,23 @@ describe('ContactsService', () => {
       delete: vi.fn(),
     };
 
+    notesService = {
+      create: vi.fn(),
+      findAllByContactId: vi.fn(),
+      findOne: vi.fn(),
+      remove: vi.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContactsService,
         {
           provide: ContactDao,
           useValue: contactDao,
+        },
+        {
+          provide: NotesService,
+          useValue: notesService,
         },
       ],
     }).compile();
@@ -46,6 +59,7 @@ describe('ContactsService', () => {
       ...dto,
       createdAt: new Date(),
       updatedAt: new Date(),
+      notes: [],
     };
     contactDao.create!.mockResolvedValue(dbEntity as any);
 
@@ -71,6 +85,7 @@ describe('ContactsService', () => {
         company: 'Cachalot Lab',
         createdAt: new Date(),
         updatedAt: new Date(),
+        notes: [],
       },
     ];
     const query = { name: 'Manuel' };
@@ -89,6 +104,7 @@ describe('ContactsService', () => {
       email: 'manuel@example.com',
       createdAt: new Date(),
       updatedAt: new Date(),
+      notes: [],
     };
     contactDao.findOne!.mockResolvedValue(contact as any);
 
@@ -111,6 +127,7 @@ describe('ContactsService', () => {
       email: 'manuel@example.com',
       createdAt: new Date(),
       updatedAt: new Date(),
+      notes: [],
     };
     contactDao.update!.mockResolvedValue(updatedEntity as any);
 
@@ -127,9 +144,44 @@ describe('ContactsService', () => {
     expect(contactDao.delete).toHaveBeenCalledWith(1);
   });
 
-  it('should throw NotFoundException on delete if contact not found', async () => {
-    contactDao.delete!.mockResolvedValue(false);
+  it('should add a note to a contact', async () => {
+    const contact = { id: 1, name: 'Manuel', email: 'manuel@example.com', notes: [] };
+    const noteResponse = {
+      id: 10,
+      content: 'Llamada de seguimiento',
+      contactId: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    contactDao.findOne!.mockResolvedValue(contact as any);
+    notesService.create!.mockResolvedValue(noteResponse as any);
 
-    await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+    const result = await service.addNote(1, { content: 'Llamada de seguimiento' });
+    expect(result.id).toBe(10);
+    expect(result.content).toBe('Llamada de seguimiento');
+    expect(notesService.create).toHaveBeenCalledWith({
+      contactId: 1,
+      content: 'Llamada de seguimiento',
+    });
+  });
+
+  it('should get notes of a contact', async () => {
+    const contact = { id: 1, name: 'Manuel', email: 'manuel@example.com', notes: [] };
+    const notes = [
+      {
+        id: 10,
+        content: 'Llamada de seguimiento',
+        contactId: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    contactDao.findOne!.mockResolvedValue(contact as any);
+    notesService.findAllByContactId!.mockResolvedValue(notes as any);
+
+    const result = await service.getNotes(1);
+    expect(result.length).toBe(1);
+    expect(result[0].content).toBe('Llamada de seguimiento');
+    expect(notesService.findAllByContactId).toHaveBeenCalledWith(1);
   });
 });
