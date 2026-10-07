@@ -15,4 +15,9 @@ export default () => ({
     logging: process.env.DB_LOGGING === 'true',
     synchronize: process.env.DB_SYNCHRONIZE === 'true',
   },
+  observe: {
+    appKey: process.env.OBSERVE_APP_KEY || 'default-observe-key',
+    appSecret: process.env.OBSERVE_APP_SECRET || 'default-observe-secret',
+    serviceId: process.env.OBSERVE_SERVICE_ID || 'cachalotlab-test',
+  },
 });
