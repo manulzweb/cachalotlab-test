@@ -17,7 +17,9 @@ export class ContactDao {
   }
 
   async findAll(query?: QueryContactDto): Promise<Contact[]> {
-    const qb = this.repository.createQueryBuilder('contact');
+    const qb = this.repository
+      .createQueryBuilder('contact')
+      .leftJoinAndSelect('contact.notes', 'notes');
 
     if (query?.name) {
       qb.andWhere('contact.name ILIKE :name', { name: `%${query.name}%` });
@@ -35,6 +37,7 @@ export class ContactDao {
   async findOne(id: number): Promise<Contact | null> {
     return this.repository.findOne({
       where: { id },
+      relations: { notes: true },
     });
   }
 
