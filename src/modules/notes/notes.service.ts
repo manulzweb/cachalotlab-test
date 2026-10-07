@@ -1,22 +1,36 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { NoteDao } from './dao/note.dao.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { NoteResponseDto } from './dto/note-response.dto.js';
 import { NoteMapper } from './mapper/note.mapper.js';
+import { Contact } from '../contacts/entities/contact.entity.js';
 
 @Injectable()
 export class NotesService {
-  constructor(private readonly noteDao: NoteDao) {}
+  constructor(
+    private readonly noteDao: NoteDao,
+    @InjectRepository(Contact)
+    private readonly contactRepository: Repository<Contact>,
+  ) {}
 
-  async create(createNoteDto: CreateNoteDto, contactId?: number): Promise<NoteResponseDto> {
-    const noteEntity = NoteMapper.toEntity(createNoteDto, contactId);
+  async create(createNoteDto: CreateNoteDto): Promise<NoteResponseDto> {
+    const contact = await this.contactRepository.findOne({
+      where: { id: createNoteDto.contactId },
+    });
+    if (!contact) {
+      throw new NotFoundException(`Contacto con ID #${createNoteDto.contactId} no encontrado`);
+    }
+
+    const noteEntity = NoteMapper.toEntity(createNoteDto);
     const created = await this.noteDao.create(noteEntity);
     return NoteMapper.toResponseDto(created);
   }
 
   async findAllByContactId(contactId: number): Promise<NoteResponseDto[]> {
     const notes = await this.noteDao.findAllByContactId(contactId);
-    return NoteMapper.toResponseDtoList(notes);
+    return notes.map((note) => NoteMapper.toResponseDto(note));
   }
 
   async findOne(id: number): Promise<NoteResponseDto> {

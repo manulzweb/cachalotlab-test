@@ -9,6 +9,7 @@ services:
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "${DB_PORT:-5432}:5432"
     environment:
@@ -40,6 +41,7 @@ services:
       - DB_USERNAME=${DB_USERNAME:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_NAME=${DB_NAME:-cachalot_db}
+      - DB_SYNCHRONIZE=${DB_SYNCHRONIZE:-true}
     depends_on:
       postgres:
         condition: service_healthy

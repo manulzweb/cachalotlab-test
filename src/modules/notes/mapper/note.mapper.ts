@@ -1,14 +1,13 @@
-import { DeepPartial } from 'typeorm';
 import { Note } from '../entities/note.entity.js';
 import { CreateNoteDto } from '../dto/create-note.dto.js';
 import { NoteResponseDto } from '../dto/note-response.dto.js';
+import { DeepPartial } from 'typeorm';
 
 export class NoteMapper {
-  static toEntity(dto: CreateNoteDto, contactId?: number): DeepPartial<Note> {
-    const finalContactId = dto.contactId || contactId;
+  static toEntity(dto: CreateNoteDto): DeepPartial<Note> {
     return {
       content: dto.content,
-      contact: finalContactId ? ({ id: finalContactId } as any) : undefined,
+      contact: { id: dto.contactId },
     };
   }
 
@@ -16,13 +15,9 @@ export class NoteMapper {
     return {
       id: entity.id,
       content: entity.content,
-      contactId: entity.contact ? entity.contact.id : undefined,
+      contactId: entity.contact?.id,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };
-  }
-
-  static toResponseDtoList(entities: Note[]): NoteResponseDto[] {
-    return entities.map((entity) => this.toResponseDto(entity));
   }
 }

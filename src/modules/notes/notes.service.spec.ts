@@ -1,12 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotesService } from './notes.service.js';
 import { NoteDao } from './dao/note.dao.js';
+import { Contact } from '../contacts/entities/contact.entity.js';
 import { NotFoundException } from '@nestjs/common';
 
 describe('NotesService', () => {
   let service: NotesService;
   let noteDao: Partial<Record<keyof NoteDao, ReturnType<typeof vi.fn>>>;
+  let contactRepository: { findOne: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     noteDao = {
@@ -16,12 +19,20 @@ describe('NotesService', () => {
       delete: vi.fn(),
     };
 
+    contactRepository = {
+      findOne: vi.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotesService,
         {
           provide: NoteDao,
           useValue: noteDao,
+        },
+        {
+          provide: getRepositoryToken(Contact),
+          useValue: contactRepository,
         },
       ],
     }).compile();
@@ -33,7 +44,7 @@ describe('NotesService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should create a note', async () => {
+  it('should create a note when contact exists', async () => {
     const dto = { content: 'Llamada de seguimiento', contactId: 1 };
     const entity = {
       id: 5,
@@ -42,12 +53,20 @@ describe('NotesService', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    contactRepository.findOne.mockResolvedValue({ id: 1, name: 'Manuel' });
     noteDao.create!.mockResolvedValue(entity as any);
 
     const result = await service.create(dto);
     expect(result.id).toBe(5);
     expect(result.content).toBe('Llamada de seguimiento');
     expect(result.contactId).toBe(1);
+  });
+
+  it('should throw NotFoundException when creating a note for a non-existent contact', async () => {
+    const dto = { content: 'Nota huérfana', contactId: 999 };
+    contactRepository.findOne.mockResolvedValue(null);
+
+    await expect(service.create(dto)).rejects.toThrow(NotFoundException);
   });
 
   it('should find all notes by contact id', async () => {

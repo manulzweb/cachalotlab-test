@@ -41,6 +41,12 @@ export class ContactDao {
     });
   }
 
+  async findByEmail(email: string): Promise<Contact | null> {
+    return this.repository.findOne({
+      where: { email },
+    });
+  }
+
   async update(id: number, contact: DeepPartial<Contact>): Promise<Contact | null> {
     const existing = await this.findOne(id);
     if (!existing) {
@@ -52,7 +58,7 @@ export class ContactDao {
   }
 
   async delete(id: number): Promise<boolean> {
-    const result = await this.repository.delete(id);
+    const result = await this.repository.softDelete(id);
     return (result.affected ?? 0) > 0;
   }
 }

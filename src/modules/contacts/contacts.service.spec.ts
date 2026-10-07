@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ContactsService } from './contacts.service.js';
 import { ContactDao } from './dao/contact.dao.js';
 import { NotesService } from '../notes/notes.service.js';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('ContactsService', () => {
   let service: ContactsService;
@@ -15,6 +15,7 @@ describe('ContactsService', () => {
       create: vi.fn(),
       findAll: vi.fn(),
       findOne: vi.fn(),
+      findByEmail: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     };
@@ -47,7 +48,7 @@ describe('ContactsService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should create a contact', async () => {
+  it('should create a contact when email is unique', async () => {
     const dto = {
       name: 'Manuel Zapata',
       email: 'manuel@example.com',
@@ -61,6 +62,7 @@ describe('ContactsService', () => {
       updatedAt: new Date(),
       notes: [],
     };
+    contactDao.findByEmail!.mockResolvedValue(null);
     contactDao.create!.mockResolvedValue(dbEntity as any);
 
     const result = await service.create(dto);
@@ -73,6 +75,16 @@ describe('ContactsService', () => {
       phone: '+573001234567',
       company: 'Cachalot Lab',
     });
+  });
+
+  it('should throw ConflictException when creating contact with duplicate email', async () => {
+    const dto = {
+      name: 'Manuel Zapata',
+      email: 'duplicado@example.com',
+    };
+    contactDao.findByEmail!.mockResolvedValue({ id: 2, email: 'duplicado@example.com' } as any);
+
+    await expect(service.create(dto)).rejects.toThrow(ConflictException);
   });
 
   it('should find all contacts with query', async () => {
@@ -120,20 +132,39 @@ describe('ContactsService', () => {
   });
 
   it('should update a contact', async () => {
-    const updateDto = { name: 'Manuel Modificado' };
-    const updatedEntity = {
+    const existing = {
       id: 1,
-      name: 'Manuel Modificado',
+      name: 'Manuel',
       email: 'manuel@example.com',
       createdAt: new Date(),
       updatedAt: new Date(),
       notes: [],
     };
+    const updateDto = { name: 'Manuel Modificado' };
+    const updatedEntity = {
+      ...existing,
+      name: 'Manuel Modificado',
+    };
+    contactDao.findOne!.mockResolvedValue(existing as any);
     contactDao.update!.mockResolvedValue(updatedEntity as any);
 
     const result = await service.update(1, updateDto);
     expect(result.name).toBe('Manuel Modificado');
     expect(contactDao.update).toHaveBeenCalledWith(1, { name: 'Manuel Modificado' });
+  });
+
+  it('should throw ConflictException if update uses email of another contact', async () => {
+    const existing = {
+      id: 1,
+      name: 'Manuel',
+      email: 'manuel@example.com',
+    };
+    contactDao.findOne!.mockResolvedValue(existing as any);
+    contactDao.findByEmail!.mockResolvedValue({ id: 2, email: 'otro@example.com' } as any);
+
+    await expect(
+      service.update(1, { email: 'otro@example.com' }),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('should delete a contact', async () => {

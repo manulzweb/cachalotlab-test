@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateContactDto } from './dto/create-contact.dto.js';
 import { UpdateContactDto } from './dto/update-contact.dto.js';
 import { QueryContactDto } from './dto/query-contact.dto.js';
@@ -17,6 +17,11 @@ export class ContactsService {
   ) {}
 
   async create(createContactDto: CreateContactDto): Promise<ContactResponseDto> {
+    const existing = await this.contactDao.findByEmail(createContactDto.email);
+    if (existing) {
+      throw new ConflictException(`El correo electrónico ${createContactDto.email} ya está registrado`);
+    }
+
     const contactData = ContactMapper.toEntity(createContactDto);
     const created = await this.contactDao.create(contactData);
     return ContactMapper.toResponseDto(created);
@@ -36,6 +41,15 @@ export class ContactsService {
   }
 
   async update(id: number, updateContactDto: UpdateContactDto): Promise<ContactResponseDto> {
+    await this.findOne(id);
+
+    if (updateContactDto.email) {
+      const existing = await this.contactDao.findByEmail(updateContactDto.email);
+      if (existing && existing.id !== id) {
+        throw new ConflictException(`El correo electrónico ${updateContactDto.email} ya está en uso por otro contacto`);
+      }
+    }
+
     const updateData = ContactMapper.toUpdateEntity(updateContactDto);
     const updated = await this.contactDao.update(id, updateData);
     if (!updated) {

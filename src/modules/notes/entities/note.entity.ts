@@ -1,7 +1,9 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -17,6 +19,7 @@ export class Note {
   @Column({ type: 'text' })
   content: string;
 
+  @Index()
   @ManyToOne(() => Contact, (contact) => contact.notes, {
     nullable: false,
     onDelete: 'CASCADE',
@@ -29,4 +32,7 @@ export class Note {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  deletedAt?: Date;
 }
