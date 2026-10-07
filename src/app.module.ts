@@ -10,6 +10,7 @@ import { validate } from './config/env.validation.js';
 
 import { HealthModule } from './modules/health/health.module.js';
 import { ContactsModule } from './modules/contacts/contacts.module.js';
+import { NotesModule } from './modules/notes/notes.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -52,6 +53,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
     HealthModule,
     ContactsModule,
+    NotesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

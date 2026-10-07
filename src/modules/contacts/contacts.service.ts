@@ -5,10 +5,16 @@ import { QueryContactDto } from './dto/query-contact.dto.js';
 import { ContactResponseDto } from './dto/contact-response.dto.js';
 import { ContactDao } from './dao/contact.dao.js';
 import { ContactMapper } from './mapper/contact.mapper.js';
+import { AddContactNoteDto } from './dto/add-contact-note.dto.js';
+import { NotesService } from '../notes/notes.service.js';
+import { NoteResponseDto } from '../notes/dto/note-response.dto.js';
 
 @Injectable()
 export class ContactsService {
-  constructor(private readonly contactDao: ContactDao) {}
+  constructor(
+    private readonly contactDao: ContactDao,
+    private readonly notesService: NotesService,
+  ) {}
 
   async create(createContactDto: CreateContactDto): Promise<ContactResponseDto> {
     const contactData = ContactMapper.toEntity(createContactDto);
@@ -44,5 +50,18 @@ export class ContactsService {
       throw new NotFoundException(`Contacto con ID #${id} no encontrado`);
     }
     return { message: `Contacto #${id} eliminado exitosamente` };
+  }
+
+  async addNote(contactId: number, addContactNoteDto: AddContactNoteDto): Promise<NoteResponseDto> {
+    await this.findOne(contactId);
+    return this.notesService.create({
+      contactId,
+      content: addContactNoteDto.content,
+    });
+  }
+
+  async getNotes(contactId: number): Promise<NoteResponseDto[]> {
+    await this.findOne(contactId);
+    return this.notesService.findAllByContactId(contactId);
   }
 }

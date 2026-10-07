@@ -13,6 +13,7 @@ import { ContactsService } from './contacts.service.js';
 import { CreateContactDto } from './dto/create-contact.dto.js';
 import { UpdateContactDto } from './dto/update-contact.dto.js';
 import { QueryContactDto } from './dto/query-contact.dto.js';
+import { AddContactNoteDto } from './dto/add-contact-note.dto.js';
 
 @Controller('contacts')
 export class ContactsController {
@@ -44,5 +45,18 @@ export class ContactsController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.contactsService.remove(id);
+  }
+
+  @Post(':id/notes')
+  addNote(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() addContactNoteDto: AddContactNoteDto,
+  ) {
+    return this.contactsService.addNote(id, addContactNoteDto);
+  }
+
+  @Get(':id/notes')
+  getNotes(@Param('id', ParseIntPipe) id: number) {
+    return this.contactsService.getNotes(id);
   }
 }
