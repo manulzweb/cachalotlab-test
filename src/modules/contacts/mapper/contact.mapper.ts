@@ -32,6 +32,13 @@ export class ContactMapper {
       company: entity.company,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+      notes: entity.notes
+        ? entity.notes.map((note) => ({
+            id: note.id,
+            content: note.content,
+            createdAt: note.createdAt,
+          }))
+        : [],
     };
   }
 
