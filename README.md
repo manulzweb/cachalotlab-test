@@ -4,7 +4,7 @@ Solución integral de CRM para la gestión de contactos y notas de clientes con 
 
 ---
 
-## 🚀 Instalación y Ejecución Rápida
+## Instalación y Ejecución Rápida
 
 ### Requisitos Previos
 - **Docker** (v20+) y **Docker Compose** (v2+).
@@ -39,9 +39,9 @@ Este comando orquesta:
 - **`nginx`**: Proxy inverso y API Gateway principal en el puerto `80`.
 
 #### Enlaces de Acceso Local
-- 🌐 **Aplicación Web (Frontend SPA)**: [http://localhost/](http://localhost/)
-- 📖 **Documentación Interactiva Swagger / OpenAPI**: [http://localhost/api/docs](http://localhost/api/docs)
-- 🩺 **Healthcheck del Sistema**: [http://localhost/api/v1/health](http://localhost/api/v1/health)
+- **Aplicación Web (Frontend SPA)**: [http://localhost/](http://localhost/)
+- **Documentación Interactiva Swagger / OpenAPI**: [http://localhost/api/docs](http://localhost/api/docs)
+- **Healthcheck del Sistema**: [http://localhost/api/v1/health](http://localhost/api/v1/health)
 
 Para detener los contenedores:
 ```bash
@@ -77,7 +77,7 @@ npm run dev
 
 ---
 
-## 🧪 Pruebas Automatizadas
+## Pruebas Automatizadas
 
 El proyecto cuenta con suite de pruebas unitarias implementadas con **Vitest**:
 
@@ -96,11 +96,11 @@ npm run build
 
 ---
 
-## 📡 Ejemplos de Llamadas a la API (`cURL`)
+## Ejemplos de Llamadas a la API (`cURL`)
 
 Todos los endpoints están versionados bajo `/api/v1`.
 
-### 👤 Contactos (`/api/v1/contacts`)
+### Contactos (`/api/v1/contacts`)
 
 #### 1. Crear un Contacto (`POST /api/v1/contacts`)
 ```bash
@@ -163,7 +163,7 @@ curl -X DELETE http://localhost/api/v1/contacts/1
 
 ---
 
-### 📝 Notas de Contactos (`/api/v1/contacts/:id/notes` y `/api/v1/notes`)
+### Notas de Contactos (`/api/v1/contacts/:id/notes` y `/api/v1/notes`)
 
 #### 6. Agregar una Nota a un Contacto (`POST /api/v1/contacts/:id/notes`)
 ```bash
@@ -207,7 +207,7 @@ curl -X DELETE http://localhost/api/v1/notes/1
 
 ---
 
-### 🩺 Estado del Sistema (`/api/v1/health`)
+### Estado del Sistema (`/api/v1/health`)
 
 #### 10. Healthcheck (`GET /api/v1/health`)
 ```bash
@@ -223,33 +223,37 @@ curl -X GET http://localhost/api/v1/health
 
 ---
 
-## 🤖 Uso de IA
+## Uso de IA
 
-Para el desarrollo y optimización de esta solución se utilizaron herramientas de inteligencia artificial como asistente de pair-programming. A continuación se resume para qué se empleó y los criterios técnicos de verificación y corrección aplicados:
+Para el desarrollo de este proyecto se utilizaron herramientas de inteligencia artificial como asistente de pair-programming. Dado que **actualmente me encuentro aprendiendo y profundizando en React**, me apoyé bastante más en la IA para la construcción, maquetación y reactividad del **Frontend**, mientras que en el **Backend** la IA actuó como apoyo/asistente bajo una arquitectura y diseño técnico que fui supervisando y corrigiendo detalladamente:
 
-### ¿Para qué se usó la IA?
-1. **Generación de la UI base y estilizado**: Creación inicial de los componentes del frontend en React 19 con DaisyUI, Tailwind CSS y animaciones en canvas.
-2. **Estructuración y boilerplate**: Asistencia en la generación de DTOs con decoradores de OpenAPI/Swagger y plantillas de configuración para Docker Compose multi-etapa.
-3. **Casos de prueba**: Propuesta inicial de tests unitarios con Vitest y mocks de servicios.
+### ¿Para qué y cómo se usó la IA?
+1. **Frontend (Apoyo Principal / Aprendizaje)**:
+   - Dado mi proceso de aprendizaje en React, utilicé la IA para acelerar la estructuración de componentes en React 19, integración de Tailwind CSS / DaisyUI, manejo de estados (`useState`, `useEffect`, `useRef`), animaciones CSS fluidas de entrada/salida (*slide-in / slide-out*), y la implementación de alertas personalizadas con SweetAlert2.
+2. **Backend (Asistido y Guiado)**:
+   - Asistencia en la generación de DTOs con decoradores de OpenAPI/Swagger, estructura base de módulos en NestJS y plantillas de configuración para Docker Compose multi-etapa y Nginx.
+3. **Casos de prueba**:
+   - Propuesta inicial de tests unitarios con Vitest y mocks de servicios.
 
 ### ¿Qué se tuvo que corregir, refactorizar y verificar manualmente?
-1. **Resolución de Dependencias Circulares y Tipado en Mappers**:
-   - Inicialmente se introdujo el uso de `DeepPartial<T>` de TypeORM en los mappers, lo que generaba referencias circulares de tipos complejas y acoplamiento con entidades.
+1. **Resolución de Dependencias Circulares y Tipado en Mappers (Backend)**:
+   - Inicialmente la IA sugirió el uso de `DeepPartial<T>` de TypeORM en los mappers, lo que generaba referencias circulares de tipos complejas y acoplamiento con entidades.
    - **Corrección**: Se eliminó `DeepPartial` y la instanciación de clases con `new Entity()`, reemplazándolos por interfaces de persistencia planas y explícitas (`CreateContactPersistence`, `UpdateContactPersistence`, `CreateNotePersistence`) cumpliendo **SOLID** y **KISS**.
 2. **Inyección de Dependencias Limpia en NestJS**:
    - Se verificó que `NotesModule` no dependiera de `ContactRepository`, eliminando dependencias circulares entre módulos y logrando un flujo estrictamente unidireccional: $\text{ContactsModule} \longrightarrow \text{NotesModule}$.
 3. **Eliminación de Sobreingeniería Defensiva y Código Redundante**:
    - Se descartaron validaciones redundantes de tipo (`typeof`) que ya resolvía `ValidationPipe`.
    - Se eliminaron wrappers innecesarios como `toResponseDtoList`, utilizando en su lugar mapeos funcionales directos `.map(ContactMapper.toResponseDto)`.
-   - Se optimizó el flujo en `ContactDao.update` eliminando `SELECTs` duplicados previos.
+   - Se optimizó el flujo en `ContactDao.update` eliminando consultas previas innecesarias y simplificando el soft delete con `Boolean(affected)`.
 4. **Sincronización Reactiva en el Frontend**:
-   - Se detectó y corrigió un desfase en el contador de notas de las tarjetas de cliente: `getContacts()` fue ajustado para resolver las notas asociadas y `handleAddNote` actualiza tanto el estado local del drawer como el conteo global de tarjetas en tiempo real.
+   - Se detectó y corrigió un desfase en el contador de notas de las tarjetas de cliente: `getContacts()` fue ajustado para resolver las notas asociadas y `handleAddNote`/`handleDeleteNote` actualizan tanto el estado local del drawer como el conteo global de tarjetas en tiempo real.
+   - Corrección en la detección de *Click Outside* para evitar cierres prematuros al abrir formularios modales o interactuar con notas.
 5. **Alertas con SweetAlert2**:
-   - Sustitución de `window.confirm` y `alert` nativos por alertas personalizadas estilizadas con el tema *Dark Glassmorphism* de la aplicación.
+   - Sustitución de `window.confirm` y `alert` nativos por un servicio desacoplado con tema *Dark Glassmorphism*.
 
 ---
 
-## 🏗️ Estructura del Repositorio
+## Estructura del Repositorio
 
 ```text
 ├── app/
@@ -271,3 +275,4 @@ Para el desarrollo y optimización de esta solución se utilizaron herramientas 
 ├── .env.example          # Plantilla de variables de entorno
 └── README.md
 ```
+
