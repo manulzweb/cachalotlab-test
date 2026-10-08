@@ -1,29 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { NoteDao } from './dao/note.dao.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
+import { UpdateNoteDto } from './dto/update-note.dto.js';
 import { NoteResponseDto } from './dto/note-response.dto.js';
 import { NoteMapper } from './mapper/note.mapper.js';
-import { Contact } from '../contacts/entities/contact.entity.js';
 
 @Injectable()
 export class NotesService {
-  constructor(
-    private readonly noteDao: NoteDao,
-    @InjectRepository(Contact)
-    private readonly contactRepository: Repository<Contact>,
-  ) {}
+  constructor(private readonly noteDao: NoteDao) {}
 
   async create(createNoteDto: CreateNoteDto): Promise<NoteResponseDto> {
-    const contact = await this.contactRepository.findOne({
-      where: { id: createNoteDto.contactId },
-    });
-    if (!contact) {
-      throw new NotFoundException(`Contacto con ID #${createNoteDto.contactId} no encontrado`);
-    }
-
-    const noteEntity = NoteMapper.toEntity(createNoteDto);
+    const noteEntity = NoteMapper.toPersistence(createNoteDto);
     const created = await this.noteDao.create(noteEntity);
     return NoteMapper.toResponseDto(created);
   }
@@ -39,6 +26,16 @@ export class NotesService {
       throw new NotFoundException(`Nota con ID #${id} no encontrada`);
     }
     return NoteMapper.toResponseDto(note);
+  }
+
+  async update(id: number, updateNoteDto: UpdateNoteDto): Promise<NoteResponseDto> {
+    await this.findOne(id);
+    const updateData = NoteMapper.toUpdatePersistence(updateNoteDto);
+    const updated = await this.noteDao.update(id, updateData);
+    if (!updated) {
+      throw new NotFoundException(`Nota con ID #${id} no encontrada`);
+    }
+    return NoteMapper.toResponseDto(updated);
   }
 
   async remove(id: number): Promise<{ message: string }> {

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Delete,
@@ -16,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { NotesService } from './notes.service.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
+import { UpdateNoteDto } from './dto/update-note.dto.js';
 import { NoteResponseDto } from './dto/note-response.dto.js';
 
 @ApiTags('notes')
@@ -62,6 +64,28 @@ export class NotesController {
   })
   findOne(@Param('id', ParseIntPipe) id: number): Promise<NoteResponseDto> {
     return this.notesService.findOne(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Actualizar una nota por ID',
+    description: 'Modifica el contenido de una nota existente.',
+  })
+  @ApiParam({ name: 'id', description: 'ID numérico de la nota', example: 1 })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Nota actualizada exitosamente.',
+    type: NoteResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Nota no encontrada.',
+  })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateNoteDto: UpdateNoteDto,
+  ): Promise<NoteResponseDto> {
+    return this.notesService.update(id, updateNoteDto);
   }
 
   @Delete(':id')
