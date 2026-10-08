@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Note } from '../entities/note.entity.js';
+import {
+  CreateNotePersistence,
+  UpdateNotePersistence,
+} from '../interfaces/note-persistence.interface.js';
 
 @Injectable()
 export class NoteDao {
@@ -10,7 +14,7 @@ export class NoteDao {
     private readonly repository: Repository<Note>,
   ) {}
 
-  async create(note: DeepPartial<Note>): Promise<Note> {
+  async create(note: CreateNotePersistence): Promise<Note> {
     const newNote = this.repository.create(note);
     return this.repository.save(newNote);
   }
@@ -18,6 +22,7 @@ export class NoteDao {
   async findAllByContactId(contactId: number): Promise<Note[]> {
     return this.repository.find({
       where: { contact: { id: contactId } },
+      relations: { contact: true },
       order: { createdAt: 'DESC' },
     });
   }
@@ -29,8 +34,13 @@ export class NoteDao {
     });
   }
 
+  async update(id: number, note: UpdateNotePersistence): Promise<Note | null> {
+    await this.repository.update(id, note);
+    return this.findOne(id);
+  }
+
   async delete(id: number): Promise<boolean> {
-    const result = await this.repository.softDelete(id);
-    return (result.affected ?? 0) > 0;
+    const { affected } = await this.repository.softDelete(id);
+    return Boolean(affected);
   }
 }

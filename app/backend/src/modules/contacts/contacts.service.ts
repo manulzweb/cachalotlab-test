@@ -22,14 +22,14 @@ export class ContactsService {
       throw new ConflictException(`El correo electrónico ${createContactDto.email} ya está registrado`);
     }
 
-    const contactData = ContactMapper.toEntity(createContactDto);
+    const contactData = ContactMapper.toPersistence(createContactDto);
     const created = await this.contactDao.create(contactData);
     return ContactMapper.toResponseDto(created);
   }
 
   async findAll(query?: QueryContactDto): Promise<ContactResponseDto[]> {
     const contacts = await this.contactDao.findAll(query);
-    return ContactMapper.toResponseDtoList(contacts);
+    return contacts.map(ContactMapper.toResponseDto);
   }
 
   async findOne(id: number): Promise<ContactResponseDto> {
@@ -50,7 +50,7 @@ export class ContactsService {
       }
     }
 
-    const updateData = ContactMapper.toUpdateEntity(updateContactDto);
+    const updateData = ContactMapper.toUpdatePersistence(updateContactDto);
     const updated = await this.contactDao.update(id, updateData);
     if (!updated) {
       throw new NotFoundException(`Contacto con ID #${id} no encontrado`);
