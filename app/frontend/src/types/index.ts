@@ -2,6 +2,7 @@ export interface ContactNote {
   id: number;
   content: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Contact {

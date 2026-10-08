@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './services/api';
+import { alertService } from './services/alert';
 import { Contact, CreateContactPayload } from './types';
 import { Squares } from './components/reactbits/Squares';
 import { SpotlightCard } from './components/reactbits/SpotlightCard';
@@ -14,7 +15,6 @@ import {
   Mail,
   Phone,
   Building,
-  FileText,
   Activity,
   Layers,
   Sparkles,
@@ -38,8 +38,9 @@ export const App: React.FC = () => {
         company: searchCompany.trim() || undefined,
       });
       setContacts(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alertService.error('Error de conexión', 'No se pudieron cargar los contactos');
     } finally {
       setLoading(false);
     }
@@ -76,10 +77,67 @@ export const App: React.FC = () => {
   };
 
   const handleAddNote = async (contactId: number, content: string) => {
-    await api.addNote(contactId, { content });
-    const fresh = await api.getContact(contactId);
-    setSelectedContact(fresh);
-    await loadContacts();
+    const createdNote = await api.addNote(contactId, { content });
+    
+    // 1. Actualizar el estado local del drawer de forma inmediata
+    setSelectedContact((prev) => {
+      if (!prev || prev.id !== contactId) return prev;
+      const updatedNotes = [createdNote, ...(prev.notes || [])];
+      return { ...prev, notes: updatedNotes };
+    });
+
+    // 2. Actualizar el estado global de la lista de contactos para reflejar el nuevo conteo de notas en tiempo real
+    setContacts((prevContacts) =>
+      prevContacts.map((c) => {
+        if (c.id !== contactId) return c;
+        const updatedNotes = [createdNote, ...(c.notes || [])];
+        return { ...c, notes: updatedNotes };
+      }),
+    );
+  };
+
+  const handleUpdateNote = async (contactId: number, noteId: number, content: string) => {
+    const updatedNote = await api.updateNote(noteId, content);
+
+    // 1. Actualizar el estado local del drawer
+    setSelectedContact((prev) => {
+      if (!prev || prev.id !== contactId) return prev;
+      const updatedNotes = (prev.notes || []).map((n) =>
+        n.id === noteId ? { ...n, content: updatedNote.content, updatedAt: updatedNote.updatedAt } : n,
+      );
+      return { ...prev, notes: updatedNotes };
+    });
+
+    // 2. Actualizar el estado global de contactos
+    setContacts((prevContacts) =>
+      prevContacts.map((c) => {
+        if (c.id !== contactId) return c;
+        const updatedNotes = (c.notes || []).map((n) =>
+          n.id === noteId ? { ...n, content: updatedNote.content, updatedAt: updatedNote.updatedAt } : n,
+        );
+        return { ...c, notes: updatedNotes };
+      }),
+    );
+  };
+
+  const handleDeleteNote = async (contactId: number, noteId: number) => {
+    await api.deleteNote(noteId);
+
+    // 1. Actualizar estado local del drawer
+    setSelectedContact((prev) => {
+      if (!prev || prev.id !== contactId) return prev;
+      const updatedNotes = (prev.notes || []).filter((n) => n.id !== noteId);
+      return { ...prev, notes: updatedNotes };
+    });
+
+    // 2. Actualizar conteo global en contactos
+    setContacts((prevContacts) =>
+      prevContacts.map((c) => {
+        if (c.id !== contactId) return c;
+        const updatedNotes = (c.notes || []).filter((n) => n.id !== noteId);
+        return { ...c, notes: updatedNotes };
+      }),
+    );
   };
 
   const handleDeleteContact = async (contactId: number) => {
@@ -114,43 +172,38 @@ export const App: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-lg tracking-tight text-white">
-                  Cachalot<span className="text-sky-400">CRM</span>
-                </span>
-                <span className="badge badge-sm badge-outline border-sky-400/30 text-sky-300 text-[10px]">
-                  v1.0
+                <h1 className="font-extrabold text-lg tracking-tight text-white">Cachalot CRM</h1>
+                <span className="badge badge-sm bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[10px] font-bold uppercase">
+                  Technical Test
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Gestión de Contactos y Notas de Clientes</p>
+              <p className="text-xs text-slate-400">Plataforma integral de gestión de clientes y notas</p>
             </div>
           </div>
 
-          {/* Quick Info & Actions */}
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-white/10 text-xs">
+            {/* System Status Pill */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/10 text-xs font-medium">
+              <Activity className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-slate-400">API Status:</span>
               <span
-                className={`w-2 h-2 rounded-full ${
-                  healthStatus === 'ok' ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'
+                className={`inline-flex items-center gap-1.5 font-semibold ${
+                  healthStatus === 'ok' ? 'text-emerald-400' : 'text-amber-400'
                 }`}
-              />
-              <span className="text-slate-300">
-                Backend: {healthStatus === 'ok' ? 'Operativo' : 'Verificando'}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full animate-pulse ${
+                    healthStatus === 'ok' ? 'bg-emerald-400' : 'bg-amber-400'
+                  }`}
+                />
+                {healthStatus === 'ok' ? 'Online' : 'Checking...'}
               </span>
             </div>
 
-            <a
-              href="/api/docs"
-              target="_blank"
-              rel="noreferrer"
-              className="px-3.5 py-1.5 rounded-xl border border-white/10 text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
-            >
-              <FileText className="w-3.5 h-3.5 text-sky-400" />
-              API Docs
-            </a>
-
+            {/* Create Contact Action */}
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-sky-500/20 transition flex items-center gap-2 active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-sky-500/25 transition transform active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Nuevo Contacto
@@ -159,19 +212,23 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto p-6 space-y-8">
-        {/* Hero Section */}
-        <div className="glass-card rounded-3xl p-8 border border-white/5 relative overflow-hidden">
+      {/* Main Content Area */}
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
+        {/* Hero Banner with ShinyText & Spotlight */}
+        <div className="glass-panel rounded-3xl p-8 md:p-10 border border-white/10 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+            <Sparkles className="w-48 h-48 text-sky-400" />
+          </div>
+
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-4">
-              <Sparkles className="w-3.5 h-3.5" /> Solución CRM Moderna & Escalable
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
-              Control centralizado de tus <ShinyText text="contactos comerciales" speed={4} />
-            </h1>
-            <p className="mt-2 text-slate-400 text-sm md:text-base leading-relaxed">
-              Administra clientes, relaciones y notas cronológicas con alta precisión técnica y
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-4">
+              <Sparkles className="w-3.5 h-3.5" /> Arquitectura Limpia & React 19
+            </span>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Gestión Inteligente de <ShinyText text="Contactos y Notas" disabled={false} speed={3} />
+            </h2>
+            <p className="mt-3 text-slate-300 text-sm md:text-base leading-relaxed">
+              Explora, filtra y gestiona contactos de forma reactiva con sincronización en tiempo real y
               persistencia segura en PostgreSQL.
             </p>
           </div>
@@ -197,39 +254,39 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div className="glass-panel rounded-2xl p-4 border border-white/5">
-          <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+        {/* Filter and Search Bar */}
+        <div className="glass-panel rounded-2xl p-4 border border-white/5 shadow-lg">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Buscar por nombre..."
+                placeholder="Buscar por nombre (ej: Alan, Ada)..."
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-900/80 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition"
+                className="w-full bg-slate-900/90 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition"
               />
             </div>
 
-            <div className="relative flex-1 min-w-[200px]">
-              <Building className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+            <div className="relative flex-1">
+              <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Filtrar por empresa..."
+                placeholder="Filtrar por empresa (ej: Bletchley Park)..."
                 value={searchCompany}
                 onChange={(e) => setSearchCompany(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-900/80 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition"
+                className="w-full bg-slate-900/90 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition"
               />
             </div>
 
-            <button
-              type="submit"
-              className="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-sm font-medium transition shadow-md shadow-sky-500/10"
-            >
-              Buscar
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 md:flex-none px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 cursor-pointer"
+              >
+                <Search className="w-4 h-4" /> Buscar
+              </button>
 
-            {(searchName || searchCompany) && (
               <button
                 type="button"
                 onClick={() => {
@@ -237,67 +294,53 @@ export const App: React.FC = () => {
                   setSearchCompany('');
                   api.getContacts().then(setContacts);
                 }}
-                className="px-3 py-2 border border-white/10 hover:bg-white/5 text-slate-400 text-sm rounded-xl transition"
+                className="p-2.5 border border-white/10 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex items-center justify-center cursor-pointer"
+                title="Limpiar filtros"
               >
-                Limpiar
+                <RefreshCw className="w-4 h-4" />
               </button>
-            )}
-
-            <button
-              type="button"
-              onClick={loadContacts}
-              disabled={loading}
-              title="Refrescar contactos"
-              className="p-2 border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white rounded-xl transition ml-auto disabled:opacity-40"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            </div>
           </form>
         </div>
 
         {/* Contacts Grid */}
-        <section>
+        <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-sky-400" /> Lista de Contactos
-            </h2>
-            <span className="text-xs text-slate-400">
-              Mostrando {contacts.length} resultado{contacts.length === 1 ? '' : 's'}
-            </span>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-sky-400" /> Directorio de Clientes
+            </h3>
+            <span className="text-xs text-slate-400">Mostrando {contacts.length} resultados</span>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="glass-panel p-6 rounded-2xl animate-pulse space-y-4">
-                  <div className="h-6 bg-slate-800 rounded w-2/3" />
-                  <div className="h-4 bg-slate-800 rounded w-1/2" />
-                  <div className="h-4 bg-slate-800 rounded w-3/4" />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="glass-panel rounded-2xl p-6 border border-white/5 animate-pulse h-44" />
               ))}
             </div>
           ) : contacts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {contacts.map((contact) => (
                 <SpotlightCard
                   key={contact.id}
+                  className="cursor-pointer group hover:border-sky-500/50 transition-all duration-300 transform hover:-translate-y-1"
+                  spotlightColor="rgba(56, 189, 248, 0.15)"
                   onClick={() => handleSelectContact(contact)}
-                  className="cursor-pointer group hover:-translate-y-1 transition duration-300"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:scale-105 transition">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400 font-bold text-lg group-hover:scale-105 transition">
                         {contact.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <h3 className="font-bold text-white group-hover:text-sky-300 transition text-base">
+                        <h3 className="font-bold text-base text-white group-hover:text-sky-400 transition">
                           {contact.name}
                         </h3>
                         <p className="text-xs text-slate-400">{contact.company || 'Sin empresa'}</p>
                       </div>
                     </div>
 
-                    <span className="badge badge-sm bg-sky-500/10 text-sky-300 border-none">
+                    <span className="badge badge-sm bg-sky-500/10 text-sky-300 border-none font-semibold">
                       {contact.notes?.length || 0} nota{(contact.notes?.length || 0) === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -323,39 +366,38 @@ export const App: React.FC = () => {
                 <Users className="w-8 h-8" />
               </div>
               <h3 className="text-lg font-bold text-white">No se encontraron contactos</h3>
-              <p className="text-sm text-slate-400 mt-1">
-                {searchName || searchCompany
-                  ? 'Intenta con otros términos de búsqueda.'
-                  : 'Crea tu primer contacto para empezar a gestionar clientes.'}
+              <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                Prueba ajustando los criterios de búsqueda o crea un nuevo contacto para comenzar.
               </p>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="mt-6 px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-sky-500/20 inline-flex items-center gap-2"
+                className="mt-6 px-4 py-2 bg-sky-500 text-white rounded-xl text-xs font-semibold hover:bg-sky-400 transition cursor-pointer"
               >
-                <Plus className="w-4 h-4" /> Crear Contacto
+                Crear Contacto
               </button>
             </div>
           )}
-        </section>
+        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 glass-panel border-t border-white/5 py-6 px-6 text-center text-xs text-slate-400 mt-12">
-        <p>Cachalot CRM - Prueba Técnica Desarrollada con React 19, Vite, Tailwind CSS y NestJS</p>
-      </footer>
-
-      {/* Modals & Drawers */}
+      {/* Contact Creation Modal */}
       <ContactModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateContact}
       />
 
+      {/* Notes & Detail Drawer */}
       <ContactDrawer
         contact={selectedContact}
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedContact(null);
+        }}
         onAddNote={handleAddNote}
+        onUpdateNote={handleUpdateNote}
+        onDeleteNote={handleDeleteNote}
         onDeleteContact={handleDeleteContact}
       />
     </div>
