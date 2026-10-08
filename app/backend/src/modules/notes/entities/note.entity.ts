@@ -25,7 +25,7 @@ export class Note {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'contact_id' })
-  contact: Contact;
+  contact!: Contact;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

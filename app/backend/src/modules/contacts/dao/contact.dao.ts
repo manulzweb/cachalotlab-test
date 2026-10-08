@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { Contact } from '../entities/contact.entity.js';
 import { QueryContactDto } from '../dto/query-contact.dto.js';
 
@@ -17,21 +17,21 @@ export class ContactDao {
   }
 
   async findAll(query?: QueryContactDto): Promise<Contact[]> {
-    const qb = this.repository
-      .createQueryBuilder('contact')
-      .leftJoinAndSelect('contact.notes', 'notes');
+    const where: FindOptionsWhere<Contact> = {};
 
     if (query?.name) {
-      qb.andWhere('contact.name ILIKE :name', { name: `%${query.name}%` });
+      where.name = ILike(`%${query.name}%`);
     }
 
     if (query?.company) {
-      qb.andWhere('contact.company ILIKE :company', { company: `%${query.company}%` });
+      where.company = ILike(`%${query.company}%`);
     }
 
-    qb.orderBy('contact.id', 'ASC');
-
-    return qb.getMany();
+    return this.repository.find({
+      where,
+      relations: { notes: true },
+      order: { id: 'ASC' },
+    });
   }
 
   async findOne(id: number): Promise<Contact | null> {

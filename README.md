@@ -1,77 +1,73 @@
-# Cachalot CRM Contacts API
+# Cachalot CRM Contacts App
 
-API REST diseñada con Node.js, NestJS y TypeScript para la gestión de contactos de clientes y notas para un CRM, respaldada por PostgreSQL y orquestada con Docker Compose.
+Solución integral de CRM para la gestión de contactos y notas de clientes con arquitectura desacoplada: **Backend REST en NestJS con TypeScript**, **Frontend SPA interactivo en React 19 + Vite** y orquestación completa con **PostgreSQL**, **Nginx** y **Docker Compose**.
+
+---
+
+## Estructura del Proyecto
+
+El repositorio está organizado en una arquitectura modular limpia:
+
+```text
+├── app/
+│   ├── backend/          # API REST desarrollada con NestJS, TypeScript, TypeORM y Vitest
+│   └── frontend/         # SPA desarrollada con React 19, Vite, Tailwind CSS, DaisyUI y ReactBits
+├── docker/
+│   └── init.sql          # Script de inicialización con esquema, índices y datos iniciales
+├── nginx/
+│   └── default.conf      # Configuración de Nginx como proxy inverso y balanceador de carga
+├── docker-compose.yml    # Orquestación de contenedores (postgres, backend, frontend, nginx)
+├── .env.example          # Plantilla de variables de entorno
+└── README.md
+```
 
 ---
 
 ## Arquitectura y Decisiones de Diseño
 
-El proyecto implementa una arquitectura en capas limpia, desacoplada y predecible:
+### Backend (`app/backend`)
+1. **Controladores (`Controllers`)**: Manejan las peticiones HTTP, validación de parámetros, versionamiento (`/api/v1`) y contratos OpenAPI/Swagger.
+2. **Servicios (`Services`)**: Contienen la lógica de negocio y validación de reglas de dominio (como unicidad de correos electrónicos).
+3. **Mappers**: Aíslan los modelos de base de datos de los contratos públicos (DTOs).
+4. **Capa DAO / Repositorios**: Persistencia con TypeORM, búsquedas parciales (`ILike`) y borrado lógico (*Soft Delete*).
+5. **Observabilidad**: Integración de `@nestjs/observe` para instrumentación.
 
-1. **Controladores (`Controllers`)**: Manejan las solicitudes HTTP, validación inicial de parámetros, versionamiento (`/api/v1`) y documentación OpenAPI/Swagger.
-2. **Servicios (`Services`)**: Orquestan la lógica de negocio, reglas del dominio (como unicidad de correos electrónicos) y validación de entidades.
-3. **Capa Mapper (`Mappers`)**: Aísla las entidades de base de datos de los contratos públicos (DTOs), transformando `CreateContactDto` / `UpdateContactDto` a entidades y entidades a `ContactResponseDto` / `NoteResponseDto`.
-4. **Capa de Acceso a Datos (`DAO`)**: Encapsula las operaciones de persistencia, búsquedas con operadores `ILIKE` y borrado lógico (*Soft Delete*).
-5. **Observabilidad (`@nestjs/observe`)**: Instrumentación de observabilidad distribuida y métricas de desempeño integrada.
+### Frontend (`app/frontend`)
+1. **React 19 + TypeScript + Vite**: Configuración moderna, rápida y con tipado estricto.
+2. **Estilizado con Tailwind CSS y DaisyUI**: Sistema de diseño consistente con modo oscuro elegante y paneles translúcidos (*glassmorphism*).
+3. **Componentes visuales inspirados en ReactBits**:
+   - `Squares`: Fondo interactivo animado por canvas con seguimiento de cursor.
+   - `SpotlightCard`: Tarjetas de contactos con efecto de luz radial al pasar el cursor.
+   - `ShinyText`: Efecto de brillo de texto animado para títulos clave.
+4. **Experiencia de Usuario**:
+   - Modal interactivo con confetti para la creación de nuevos contactos.
+   - Drawer lateral para inspeccionar el contacto, listar notas cronológicas y agregar nuevas notas en tiempo real.
+   - Búsqueda y filtrado dinámico por nombre o empresa.
 
 ---
 
 ## Contenedorización e Infraestructura con Docker
 
 ### ¿Por qué se utilizó Docker?
+- **Reproducibilidad y consistencia de entorno**: Garantiza que la base de datos PostgreSQL, la API NestJS, el frontend React y Nginx se ejecuten idénticamente en cualquier entorno.
+- **Aislamiento de dependencias**: Cada servicio corre en su propio contenedor sin requerir Node.js o PostgreSQL en la máquina host.
+- **Puesta en marcha con un solo comando**: Levanta la solución completa lista para producción con `docker compose up -d`.
 
-El uso de Docker en este proyecto responde a los siguientes objetivos de ingeniería de software:
+### ¿Qué hace el Dockerfile del Backend (`app/backend/Dockerfile`)?
+- Construcción multi-etapa (*Multi-Stage Build*):
+  - Etapa `builder`: Instala dependencias completas y compila TypeScript a JavaScript en `dist/`.
+  - Etapa `production`: Imagen ligera sobre `node:22-alpine`, instalando solo dependencias de producción y ejecutándose bajo el usuario sin privilegios `node`.
 
-- **Reproducibilidad y consistencia de entorno**: Elimina el problema de "en mi máquina funciona", garantizando que la aplicación, la base de datos PostgreSQL y el proxy inverso Nginx se ejecuten exactamente igual en desarrollo local, entornos de prueba y producción, independientemente del sistema operativo anfitrión.
-- **Aislamiento de dependencias**: La base de datos, el entorno de ejecución Node.js y el servidor web Nginx se ejecutan en entornos aislados con sus propias versiones, sin requerir instalaciones previas ni generar conflictos con paquetes locales de la máquina host.
-- **Facilidad de despliegue y puesta en marcha (*One-Command Setup*)**: Cualquier desarrollador o evaluador puede clonar el repositorio y levantar la infraestructura completa lista para producción con un solo comando (`docker compose up -d`), incluyendo la inicialización de tablas, índices y semillas de datos.
-- **Escalabilidad horizontal**: Permite escalar dinámicamente el número de instancias de la API mediante balanceo de carga sin modificar el código fuente.
+### ¿Qué hace el Dockerfile del Frontend (`app/frontend/Dockerfile`)?
+- Etapa `builder`: Compila la aplicación React con Vite.
+- Etapa `production`: Sirve los archivos estáticos optimizados mediante un servidor `nginx:alpine` liviano con soporte de enrutamiento SPA.
 
----
-
-### ¿Qué hace el Dockerfile?
-
-El archivo `Dockerfile` define la construcción de la imagen de la API de NestJS mediante un patrón de **construcción multi-etapa (*Multi-Stage Build*)** basado en `node:22-alpine` para optimizar el rendimiento, la seguridad y el tamaño de la imagen final:
-
-1. **Etapa 1 (Builder)**:
-   - Copia los manifiestos de dependencias (`package*.json`) y ejecuta `npm ci` para instalar todas las dependencias necesarias.
-   - Copia el código fuente completo y compila la aplicación a JavaScript nativo mediante `npm run build` en el directorio `dist/`.
-
-2. **Etapa 2 (Production)**:
-   - Crea una imagen limpia y liviana basada en Alpine Linux.
-   - Instala únicamente las dependencias de producción (`npm ci --omit=dev`), reduciendo drásticamente la superficie de ataque y el peso de la imagen.
-   - Copia exclusivamente los artefactos compilados (`dist/`) desde la etapa anterior.
-   - Aplica el **principio de mínimo privilegio**, ejecutando el proceso bajo el usuario sin privilegios `node` en lugar de `root`.
-   - Expone el puerto `3000` y define el comando de inicio `node dist/main.js`.
-
----
-
-### ¿Qué hace el Docker Compose (`docker-compose.yml`)?
-
-El archivo `docker-compose.yml` actúa como el orquestador de los múltiples servicios interconectados a través de una red privada (`backend`):
-
-1. **Servicio `postgres` (Base de Datos)**:
-   - Levanta PostgreSQL 15 sobre Alpine Linux.
-   - Persiste la información en un volumen de datos nombrado (`pgdata`).
-   - Monta automáticamente el script `docker/init.sql` en el directorio de inicialización `/docker-entrypoint-initdb.d/` para crear las tablas, restricciones de unicidad, índices y datos iniciales en el primer arranque.
-   - Implementa un mecanismo de verificación de salud (*Healthcheck*) con `pg_isready` para asegurar que la base de datos esté lista antes de aceptar conexiones.
-
-2. **Servicio `api` (Backend NestJS)**:
-   - Construye la imagen a partir del `Dockerfile` o utiliza la imagen preconstruida.
-   - Se vincula al servicio `postgres` con `depends_on: { condition: service_healthy }`, evitando que la API intente arrancar antes de que la base de datos esté totalmente operativa.
-   - Permite escalar horizontalmente las réplicas mediante la variable `API_REPLICAS` (por defecto 2 instancias).
-
-3. **Servicio `nginx` (Proxy Reverso y Balanceador de Carga)**:
-   - Actúa como puerta de entrada (*Gateway*) en el puerto HTTP `80`.
-   - Utiliza el DNS interno de Docker (`127.0.0.11`) para balancear la carga de solicitudes HTTP entre todas las réplicas activas del servicio `api`.
-   - Inyecta cabeceras estándar de proxy (`Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`) y maneja timeouts y tamaños máximos de solicitud.
-
----
-
-## Requisitos Previos
-
-- **Node.js**: v20 o superior (solo para desarrollo local sin Docker)
-- **Docker** y **Docker Compose**
+### ¿Qué hace Docker Compose (`docker-compose.yml`)?
+Orquesta 4 servicios sobre la red privada `backend`:
+1. `postgres`: PostgreSQL 15 con persistencia de volumen (`pgdata`), healthcheck con `pg_isready` y ejecución automática del script `docker/init.sql`.
+2. `api`: Backend NestJS escalable dinámicamente (`API_REPLICAS=2`), condicionado a la salud de la base de datos.
+3. `frontend`: Servicio web estático con Nginx sirviendo la SPA de React.
+4. `nginx`: Gateway principal en el puerto `80`. Enruta `/api/` hacia el cluster de backend y `/` hacia la aplicación frontend.
 
 ---
 
@@ -79,116 +75,78 @@ El archivo `docker-compose.yml` actúa como el orquestador de los múltiples ser
 
 ### 1. Variables de Entorno
 
-Copia el archivo de ejemplo:
-
 ```bash
 cp .env.example .env
 ```
 
-El archivo `.env` viene preconfigurado con los valores estándar para desarrollo y contenedores:
-- `HTTP_PORT=80` (puerto expuesto por Nginx)
-- `DB_PORT=5432`
-- `DB_USERNAME=postgres`
-- `DB_PASSWORD=postgres`
-- `DB_NAME=cachalot_db`
-- `DB_SYNCHRONIZE=true`
-- `API_REPLICAS=2`
-
----
-
-### 2. Levantar con Docker Compose (Recomendado)
-
-Inicia PostgreSQL (con script de inicialización e índices automáticos), la API y el balanceador de carga Nginx en segundo plano:
+### 2. Levantar la Aplicación Completa con Docker Compose (Recomendado)
 
 ```bash
 docker compose up -d
 ```
 
-Verifica el estado de los servicios:
-```bash
-docker compose ps
-```
-
-Acceso al servicio:
-- **API Base**: `http://localhost/api/v1`
-- **Documentación Interactiva Swagger**: `http://localhost/api/docs`
+Acceso:
+- **Aplicación Frontend**: `http://localhost/`
+- **Documentación Swagger / OpenAPI**: `http://localhost/api/docs`
+- **Healthcheck del Sistema**: `http://localhost/api/v1/health`
 
 ---
 
-### 3. Ejecución en Desarrollo Local (Alternativa)
+### 3. Desarrollo Local (Sin Docker)
 
-Si deseas ejecutar la base de datos en Docker y la API directamente en tu máquina local:
-
+#### Base de Datos:
 ```bash
-# 1. Iniciar solo PostgreSQL
 docker compose up -d postgres
+```
 
-# 2. Instalar dependencias
+#### Backend:
+```bash
+cd app/backend
 npm install
-
-# 3. Iniciar la API en modo desarrollo
 npm run start:dev
 ```
+Backend disponible en `http://localhost:3000/api/v1` y Swagger en `http://localhost:3000/api/docs`.
 
-La API estará disponible en `http://localhost:3000/api/v1` y la documentación en `http://localhost:3000/api/docs`.
-
----
-
-## Documentación Interactiva (Swagger / OpenAPI)
-
-Toda la API se encuentra documentada e interactiva a través de **Swagger UI** en:
-- `http://localhost/api/docs` (o `http://localhost:3000/api/docs` en desarrollo local).
+#### Frontend:
+```bash
+cd app/frontend
+npm install
+npm run dev
+```
+Frontend disponible en `http://localhost:5173`.
 
 ---
 
 ## Pruebas Automatizadas
 
-El proyecto utiliza **Vitest** para pruebas unitarias de alta velocidad y cobertura:
-
 ```bash
-# Ejecutar todas las pruebas unitarias
+# Backend (30 pruebas unitarias con Vitest)
+cd app/backend
 npm run test
-
-# Ejecutar pruebas en modo observador (watch)
-npm run test:watch
-
-# Ejecutar pruebas con reporte de cobertura
-npm run test:cov
-
-# Ejecutar linter
 npm run lint
+
+# Frontend (Validación de TypeScript y empaquetado de producción)
+cd app/frontend
+npm run build
 ```
 
 ---
 
 ## Endpoints Principales (`/api/v1`)
 
-### 1. Contactos (`/api/v1/contacts`)
+### Contactos (`/api/v1/contacts`)
+- `POST /api/v1/contacts`: Crea un contacto validando unicidad de `email` (`201 Created` / `409 Conflict`).
+- `GET /api/v1/contacts`: Lista contactos activos con filtros (`?name=...&company=...`).
+- `GET /api/v1/contacts/:id`: Detalle de un contacto con sus notas asociadas.
+- `PATCH /api/v1/contacts/:id`: Actualización parcial.
+- `DELETE /api/v1/contacts/:id`: Borrado lógico (*Soft Delete*).
+- `POST /api/v1/contacts/:id/notes`: Agrega una nota al contacto.
+- `GET /api/v1/contacts/:id/notes`: Lista las notas del contacto.
 
-- `POST /api/v1/contacts`: Crea un nuevo contacto validando unicidad de `email` (`201 Created` / `409 Conflict`).
-- `GET /api/v1/contacts`: Lista los contactos activos con filtros opcionales (`?name=...&company=...`).
-- `GET /api/v1/contacts/:id`: Obtiene el detalle de un contacto con sus notas asociadas.
-- `PATCH /api/v1/contacts/:id`: Actualiza parcialmente los datos de un contacto.
-- `DELETE /api/v1/contacts/:id`: Eliminación lógica (*Soft Delete*) del contacto.
-- `POST /api/v1/contacts/:id/notes`: Agrega una nota directamente vinculada al contacto.
-- `GET /api/v1/contacts/:id/notes`: Lista todas las notas asociadas al contacto.
+### Notas (`/api/v1/notes`)
+- `POST /api/v1/notes`: Crea una nota con `contactId` y `content`.
+- `GET /api/v1/notes/:id`: Detalle de una nota.
+- `DELETE /api/v1/notes/:id`: Borrado lógico (*Soft Delete*).
 
-### 2. Notas (`/api/v1/notes`)
-
-- `POST /api/v1/notes`: Crea una nota especificando `contactId` y `content`.
-- `GET /api/v1/notes/:id`: Obtiene los detalles de una nota específica.
-- `DELETE /api/v1/notes/:id`: Eliminación lógica (*Soft Delete*) de la nota.
-
-### 3. Health Check (`/api/v1/health`)
-
-- `GET /api/v1/health`: Verifica la operatividad de la API y la conectividad activa con PostgreSQL (`SELECT 1`).
-
----
-
-## Qué faltó y qué se mejoraría con más tiempo
-
-1. **Paginación en Contactos y Notas**: Implementar paginación cursor-based o `limit`/`offset` (`page`, `limit`) con metadatos de respuesta (`total`, `totalPages`, `hasNextPage`) para evitar sobrecarga de memoria al escalar a miles de registros.
-2. **Pruebas de Integración y End-to-End (E2E)**: Configurar suites E2E completas con Testcontainers para ejecutar pruebas automatizadas contra una base de datos PostgreSQL real y aislada en CI/CD.
-3. **Autenticación y Autorización (JWT / RBAC)**: Incorporar soporte multi-inquilino (*multi-tenant*) y control de acceso basado en roles para asegurar los contactos por usuario/organización.
-4. **Pipeline de CI/CD (GitHub Actions)**: Crear `.github/workflows/ci.yml` para automatizar la ejecución de `oxlint`, `vitest` y `nest build` en cada Pull Request.
-5. **Rate Limiting y Seguridad Adicional**: Configurar `@nestjs/throttler` para prevenir abusos de fuerza bruta y `helmet` para cabeceras HTTP seguras.
+### Healthcheck (`/api/v1/health`)
+- `GET /api/v1/health`: Estado operativo y verificación activa con PostgreSQL (`SELECT 1`).
