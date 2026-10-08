@@ -20,12 +20,12 @@ export class Note {
   content: string;
 
   @Index()
-  @ManyToOne(() => Contact, (contact) => contact.notes, {
+  @ManyToOne(() => Contact, {
     nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'contact_id' })
-  contact!: Contact;
+  contact: Contact;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

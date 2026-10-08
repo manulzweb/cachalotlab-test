@@ -1,26 +1,19 @@
-import { DeepPartial } from 'typeorm';
 import { Contact } from '../entities/contact.entity.js';
 import { CreateContactDto } from '../dto/create-contact.dto.js';
 import { UpdateContactDto } from '../dto/update-contact.dto.js';
 import { ContactResponseDto } from '../dto/contact-response.dto.js';
+import {
+  CreateContactPersistence,
+  UpdateContactPersistence,
+} from '../interfaces/contact-persistence.interface.js';
 
 export class ContactMapper {
-  static toEntity(dto: CreateContactDto): DeepPartial<Contact> {
-    return {
-      name: dto.name,
-      email: dto.email,
-      phone: dto.phone,
-      company: dto.company,
-    };
+  static toPersistence(dto: CreateContactDto): CreateContactPersistence {
+    return { ...dto };
   }
 
-  static toUpdateEntity(dto: UpdateContactDto): DeepPartial<Contact> {
-    const entity: DeepPartial<Contact> = {};
-    if (dto.name !== undefined) entity.name = dto.name;
-    if (dto.email !== undefined) entity.email = dto.email;
-    if (dto.phone !== undefined) entity.phone = dto.phone;
-    if (dto.company !== undefined) entity.company = dto.company;
-    return entity;
+  static toUpdatePersistence(dto: UpdateContactDto): UpdateContactPersistence {
+    return { ...dto };
   }
 
   static toResponseDto(entity: Contact): ContactResponseDto {
@@ -32,17 +25,6 @@ export class ContactMapper {
       company: entity.company,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-      notes: entity.notes
-        ? entity.notes.map((note) => ({
-            id: note.id,
-            content: note.content,
-            createdAt: note.createdAt,
-          }))
-        : [],
     };
-  }
-
-  static toResponseDtoList(entities: Contact[]): ContactResponseDto[] {
-    return entities.map((entity) => this.toResponseDto(entity));
   }
 }

@@ -1,14 +1,22 @@
 import { Note } from '../entities/note.entity.js';
 import { CreateNoteDto } from '../dto/create-note.dto.js';
+import { UpdateNoteDto } from '../dto/update-note.dto.js';
 import { NoteResponseDto } from '../dto/note-response.dto.js';
-import { DeepPartial } from 'typeorm';
+import {
+  CreateNotePersistence,
+  UpdateNotePersistence,
+} from '../interfaces/note-persistence.interface.js';
 
 export class NoteMapper {
-  static toEntity(dto: CreateNoteDto): DeepPartial<Note> {
+  static toPersistence(dto: CreateNoteDto): CreateNotePersistence {
     return {
       content: dto.content,
       contact: { id: dto.contactId },
     };
+  }
+
+  static toUpdatePersistence(dto: UpdateNoteDto): UpdateNotePersistence {
+    return { ...dto };
   }
 
   static toResponseDto(entity: Note): NoteResponseDto {

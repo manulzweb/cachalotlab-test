@@ -4,11 +4,9 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Note } from '../../notes/entities/note.entity.js';
 
 @Entity('contacts')
 export class Contact {
@@ -29,9 +27,6 @@ export class Contact {
   @Index()
   @Column({ length: 255, nullable: true })
   company?: string;
-
-  @OneToMany(() => Note, (note) => note.contact)
-  notes?: Note[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateContactDto {
@@ -15,6 +16,7 @@ export class CreateContactDto {
     example: 'manuel@example.com',
   })
   @IsNotEmpty({ message: 'El correo es obligatorio' })
+  @Transform(({ value }) => value?.toLowerCase())
   @IsEmail({}, { message: 'El correo debe tener un formato válido' })
   email: string;
 
